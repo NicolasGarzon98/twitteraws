@@ -11,14 +11,14 @@ function App() {
 
   async function fetchMessages() {
     // Llama a la función Lambda para obtener los mensajes
-    const response = await API.get('myapi', '/messages');
+    const response = await API.get('TwitterThreadPub', '/messages');
     setMessages(response);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     // Llama a la función Lambda para guardar el mensaje
-    await API.post('myapi', '/messages', { body: { message } });
+    await API.post('TwitterNewPub', '/messages', { body: { message } });
     setMessage('');
     fetchMessages();
   }
