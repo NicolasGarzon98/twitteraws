@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './App.css'; // Importa el archivo CSS
 
-const apiUrl = 'https://inq4xdkvg5.execute-api.us-east-1.amazonaws.com/dev/Twitter';
+const apiUrl = 'https://inq4xdkvg5.execute-api.us-east-1.amazonaws.com/dev/Twitter'; // Cambia esto por la URL de tu API Gateway
 
 function App() {
   const [message, setMessage] = useState('');
   const [author, setAuthor] = useState('');
   const [messages, setMessages] = useState([]);
+  const [comments, setComments] = useState({}); // Para almacenar los comentarios por PubID
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -20,13 +21,14 @@ function App() {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const data = await response.json();
-      const tweet = data.body;
-      const tweetArray = JSON.parse(tweet);
+      const tweetArray = JSON.parse(data.body);
       if (Array.isArray(tweetArray)) {
         setMessages(tweetArray);
-      } else {
-        console.error('La respuesta no es un array:', tweetArray);
-        setMessages([]);
+        const initialComments = {};
+        tweetArray.forEach(tweet => {
+          initialComments[tweet.PubID] = []; // Inicializa un array vacío para cada tweet
+        });
+        setComments(initialComments);
       }
     } catch (error) {
       console.error('Error al obtener mensajes:', error);
@@ -58,9 +60,38 @@ function App() {
     }
   }
 
+  async function handleCommentSubmit(event, postId) {
+    event.preventDefault();
+    const respuestaContenido = event.target.elements.comment.value;
+    const respondedor = author;
+
+    try {
+      await fetch(`${apiUrl}/Responder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId, respuestaContenido, respondedor }),
+      });
+
+      // Actualiza los comentarios en el estado y los ordena
+      setComments(prevComments => ({
+        ...prevComments,
+        [postId]: [
+          ...prevComments[postId],
+          { autor: respondedor, contenido: respuestaContenido, fecha: new Date().toLocaleString() }
+        ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)) // Ordenar por fecha
+      }));
+      event.target.reset(); // Limpia el formulario después de enviar
+    } catch (error) {
+      console.error('Error al guardar el comentario:', error);
+      setError('Error al guardar el comentario.');
+    }
+  }
+
   return (
     <div>
-      <h1>Mini Twitter</h1>
+      <h1>MiniTwitter BBVA</h1>
       <form onSubmit={handleSubmit}>
         <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Escribe tu mensaje aquí..." />
         <input 
@@ -71,12 +102,23 @@ function App() {
         />
         <button type="submit">Guardar</button>
       </form>
-      {error && <p className="error">{error}</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <ul>
         {messages.map((msg) => (
-          <li key={msg.PubID}>
-            <span className="author">{msg.autor}</span>
-            <span className="content">{msg.contenido}</span>
+          <li key={msg.PubID} style={{ marginBottom: '20px' }}>
+            <div style={{ fontWeight: 'bold' }}>{msg.autor}</div>
+            <div>{msg.contenido}</div>
+            <div style={{ fontSize: 'small', color: 'gray' }}>{new Date(msg.fechaCreacion).toLocaleString()}</div>
+            <form onSubmit={(e) => handleCommentSubmit(e, msg.PubID)}>
+              <textarea name="comment" placeholder="Escribe un comentario..." />
+              <button type="submit">Enviar Comentario</button>
+            </form>
+            {comments[msg.PubID] && comments[msg.PubID].map((comment, index) => (
+              <div key={index} style={{ marginLeft: '20px', marginTop: '5px', color: 'gray' }}>
+                <strong>{comment.autor}</strong>: {comment.contenido}
+                <div style={{ fontSize: 'small' }}>{comment.fecha}</div>
+              </div>
+            ))}
           </li>
         ))}
       </ul>
