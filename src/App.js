@@ -115,7 +115,7 @@ function App() {
             </form>
             {comments[msg.PubID] && comments[msg.PubID].map((comment, index) => (
               <div key={index} style={{ marginLeft: '20px', marginTop: '5px', color: 'gray' }}>
-                <strong>{comment.autor}</strong>: {comment.contenido}
+                {comment.contenido}
                 <div style={{ fontSize: 'small' }}>{comment.fecha}</div>
               </div>
             ))}
